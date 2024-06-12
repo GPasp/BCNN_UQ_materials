@@ -64,6 +64,7 @@ class Plotting:
         elif self.cfg.config_type == 'fiber':
             colormap = 'viridis'
             colormap2 = 'viridis'
+            
         fig, axes = plt.subplots(Nsamp, n_columns, figsize=(4 * n_columns, 20 * 4),squeeze = False)
         fig.subplots_adjust(wspace=0.2, hspace=-0.9)
         for i in range(Nsamp):
@@ -127,13 +128,20 @@ class Plotting:
         if self.std_pred is not None and len(self.std_pred) > 0 and self.cfg.method != 'Deterministic':
             n_columns = 5
         else:
-            n_columns = 4        
+            n_columns = 4     
+            
         for i in range(Nsamp):
+            relative_errors = np.abs(self.mean_pred[i] - self.Y_ts[i]) / np.abs(self.Y_ts[i])    
+            max_relative_error = np.max(relative_errors) * 100  # in percentage
+            # Calculate overall MAE for the current sample
+            absolute_errors = np.abs(self.mean_pred[i] - self.Y_ts[i])
+            overall_mae = np.mean(absolute_errors)
+            # print(f"Sample {i+1}: Method: {self.cfg.method}, Maximum relative error: {max_relative_error:.2f}%, Overall MAE: {overall_mae:.4f}")
             fig, axes = plt.subplots(1, n_columns, figsize=(4 * n_columns, 4), squeeze=True)
             fig.subplots_adjust(wspace=0.2, hspace=-0.9)
             vmin = 0.8*np.min(self.Y_ts[i, channel])
             vmax = 1.2*np.max(self.Y_ts[i, channel])
-            
+
             # Microstructure plot
             im = axes[0].imshow(self.X_ts[i, channel, :, :], cmap=colormap2)
             axes[0].set_xticks([])
@@ -170,7 +178,11 @@ class Plotting:
 
             if self.std_pred is not None and len(self.std_pred) > 0 and self.cfg.method != 'Deterministic':
                 # Predicted stress \sigma plot
-                im = axes[3].imshow(self.std_pred[i, channel, :, :], cmap='hot')
+                # vmin_var = 0.6*np.min(self.std_pred[i, channel])
+                # vmax_var = 1.5*np.max(self.std_pred[i, channel])
+                vmin_var = 0
+                vmax_var = 0.8
+                im = axes[3].imshow(self.std_pred[i, channel, :, :], cmap='hot',vmin = vmin_var,vmax = vmax_var)
                 axes[3].set_xticks([])
                 axes[3].set_yticks([])
                 axes[3].set_title(r'$\rm{Predicted \ stress \ \sigma}$', fontsize=14)
@@ -184,7 +196,9 @@ class Plotting:
                 fig.colorbar(im, ax=axes[4], fraction=0.046, pad=0.04)
             else:
                 # Absolute Error plot
-                im = axes[3].imshow(ae[i, channel, :, :], cmap='hot')
+                vmin_err = 0
+                vmax_err = 2
+                im = axes[3].imshow(ae[i, channel, :, :], cmap='hot',vmin = vmin_err,vmax = vmax_err)
                 axes[3].set_xticks([])
                 axes[3].set_yticks([])
                 axes[3].set_title(r'$\rm{Absolute \ error}$', fontsize=14)
@@ -309,7 +323,7 @@ class Plotting:
 
     def run_plotting(self):
         method = self.cfg.method
-        Plotting._plot_predictions(self, Nsamp=40, channel=0)
+        # Plotting._plot_predictions(self, Nsamp=40, channel=0)
         Plotting._plot_predictions_individual(self, Nsamp=40, channel=0)
         if method in ['BBB', 'BBB_LRT']:
             Plotting._plot_training_history_BBB(self)
@@ -320,38 +334,41 @@ class Plotting:
 class PlottingComparisonMCD:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.index = 5 # Assuming index 4  is commonly used
-    def _plot_comparison(self, data, save_name, calculate_metric=None, data_hmc = None ):
+        self.index = 4 # Assuming index 4 is commonly used
+    def _plot_comparison(self, data, save_name, calculate_metric=None, data_hmc=None):
         fig, axes = plt.subplots(nrows=len(self.cases), ncols=len(self.drop_rates), figsize=(8, 6.4))
         fig.subplots_adjust(wspace=0.2, hspace=-0.9)
         ft_size = 10
         cbar_ft_size = 6
-        temp_min = []
-        temp_max = []
-        # Find the global min and max across all cases and drop rates
-        for case_i in self.cases:
-            for drop_rate in self.drop_rates:
+
+        for j, drop_rate in enumerate(self.drop_rates):
+            temp_min = []
+            temp_max = []
+
+            # Find the min and max for each column (drop_rate)
+            for case_i in self.cases:
                 if calculate_metric:
-                    err_value, err_image, _ = calculate_metric(data[case_i][drop_rate][self.index, 0, :, :], data_hmc[self.index, 0, :, :])
+                    _, err_image, _ = calculate_metric(data[case_i][drop_rate][self.index, 0, :, :], data_hmc[self.index, 0, :, :])
                     temp_min.append(np.min(err_image))
                     temp_max.append(np.max(err_image))
                 else:
                     temp_min.append(np.min(data[case_i][drop_rate][self.index, 0, :, :]))
                     temp_max.append(np.max(data[case_i][drop_rate][self.index, 0, :, :]))
-                    
-                global_min = np.min(temp_min)   
-                global_max = np.min(temp_max)   
-                
-        for i, case_i in enumerate(self.cases):
-            for j, drop_rate in enumerate(self.drop_rates):
+
+            # col_min = np.min(temp_min)
+            # col_max = np.max(temp_max)
+            col_min = 0
+            col_max = 1
+            
+            for i, case_i in enumerate(self.cases):
                 ax = axes[i][j]
                 err_value = None
                 if calculate_metric:
-                    err_value, err_image, metric_type = calculate_metric(data[case_i][drop_rate][self.index, 0, :, :],data_hmc[self.index, 0, :, :])
-                    # s = np.round(err_value, 3)
-                    im = ax.imshow(err_image, cmap='pink', aspect='auto')
-                else:    
-                    im = ax.imshow(data[case_i][drop_rate][self.index, 0, :, :], cmap='hot', aspect='auto')
+                    err_value, err_image, metric_type = calculate_metric(data[case_i][drop_rate][self.index, 0, :, :], data_hmc[self.index, 0, :, :])
+                    im = ax.imshow(err_image, cmap='pink', aspect='auto', vmin=col_min, vmax=col_max)
+                else:
+                    im = ax.imshow(data[case_i][drop_rate][self.index, 0, :, :], cmap='hot', aspect='auto', vmin=col_min, vmax=col_max)
+
                 cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
                 cbar.ax.tick_params(labelsize=cbar_ft_size)  # Set the font size here
                 if calculate_metric:
@@ -372,8 +389,8 @@ class PlottingComparisonMCD:
         if self.cfg.config_type == 'polycrystalline':
             save_path = os.path.join('../figures_polycrystalline_2D/', save_name)
         elif self.cfg.config_type == 'fiber':
-            save_path = os.path.join('../figures_fiber/', save_name)        
-        # plt.suptitle(plot_title, fontsize=20)
+            save_path = os.path.join('../figures_fiber/', save_name)
+
         plt.tight_layout()
         plt.savefig(save_path, dpi=100)
         plt.close()
@@ -407,7 +424,7 @@ class PlottingComparisonMCD:
             if mean_pred is not None:
                 mean_stress_error = round(np.mean(np.abs(Y_ts - mean_pred)), 4)
                 std_stress_error = round(np.std(np.abs(Y_ts - mean_pred)), 4)
-                total_variance = round(std_stress_error ** 2, 5)
+                average_variance = round(np.mean(std_pred),4)
                 if std_pred_HMC is not None:
                     mean_std_stress_error = round(np.mean(np.abs(std_pred - std_pred_HMC)), 4)
                     std_std_stress_error = round(np.std(np.abs(std_pred - std_pred_HMC)), 4)
@@ -419,7 +436,7 @@ class PlottingComparisonMCD:
                     "Method": method,
                     "stress error - absolute mean": mean_stress_error,
                     "stress error - variance": std_stress_error,
-                    "total variance": total_variance,
+                    "average variance": average_variance,
                     "sigma error - absolute mean": mean_std_stress_error,
                     "sigma error - variance": std_std_stress_error
                 })
