@@ -142,6 +142,14 @@ class Plotting:
             vmin = 0.8*np.min(self.Y_ts[i, channel])
             vmax = 1.2*np.max(self.Y_ts[i, channel])
 
+            # Absolute Error plot
+            if self.cfg.config_type == 'fiber':
+                vmin_err = 0
+                vmax_err = 2
+            elif self.cfg.config_type == 'polycrystalline':
+                vmin_err = 0
+                vmax_err = 0.3
+
             # Microstructure plot
             im = axes[0].imshow(self.X_ts[i, channel, :, :], cmap=colormap2)
             axes[0].set_xticks([])
@@ -180,8 +188,13 @@ class Plotting:
                 # Predicted stress \sigma plot
                 # vmin_var = 0.6*np.min(self.std_pred[i, channel])
                 # vmax_var = 1.5*np.max(self.std_pred[i, channel])
-                vmin_var = 0
-                vmax_var = 0.8
+                if self.cfg.config_type == 'fiber':
+                    vmin_var = 0
+                    vmax_var = 0.8
+                elif self.cfg.config_type == 'polycrystalline':
+                    vmin_var = 0.01
+                    vmax_var = 0.1
+                
                 im = axes[3].imshow(self.std_pred[i, channel, :, :], cmap='hot',vmin = vmin_var,vmax = vmax_var)
                 axes[3].set_xticks([])
                 axes[3].set_yticks([])
@@ -189,15 +202,13 @@ class Plotting:
                 fig.colorbar(im, ax=axes[3], fraction=0.046, pad=0.04)
 
                 # Absolute Error plot
-                im = axes[4].imshow(ae[i, channel], cmap='hot')
+                im = axes[4].imshow(ae[i, channel], cmap='hot', vmin = vmin_err,vmax = vmax_err)
                 axes[4].set_xticks([])
                 axes[4].set_yticks([])
                 axes[4].set_title(r'$\rm{Absolute \ error}$', fontsize=14)
                 fig.colorbar(im, ax=axes[4], fraction=0.046, pad=0.04)
             else:
-                # Absolute Error plot
-                vmin_err = 0
-                vmax_err = 2
+                    
                 im = axes[3].imshow(ae[i, channel, :, :], cmap='hot',vmin = vmin_err,vmax = vmax_err)
                 axes[3].set_xticks([])
                 axes[3].set_yticks([])
@@ -323,7 +334,7 @@ class Plotting:
 
     def run_plotting(self):
         method = self.cfg.method
-        # Plotting._plot_predictions(self, Nsamp=40, channel=0)
+        Plotting._plot_predictions(self, Nsamp=40, channel=0)
         Plotting._plot_predictions_individual(self, Nsamp=40, channel=0)
         if method in ['BBB', 'BBB_LRT']:
             Plotting._plot_training_history_BBB(self)
@@ -334,7 +345,7 @@ class Plotting:
 class PlottingComparisonMCD:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.index = 4 # Assuming index 4 is commonly used
+        self.index = 8
     def _plot_comparison(self, data, save_name, calculate_metric=None, data_hmc=None):
         fig, axes = plt.subplots(nrows=len(self.cases), ncols=len(self.drop_rates), figsize=(8, 6.4))
         fig.subplots_adjust(wspace=0.2, hspace=-0.9)
@@ -357,8 +368,12 @@ class PlottingComparisonMCD:
 
             # col_min = np.min(temp_min)
             # col_max = np.max(temp_max)
-            col_min = 0
-            col_max = 1
+            if self.cfg.config_type == 'fiber':
+                col_min = 0
+                col_max = 1
+            elif self.cfg.config_type == 'polycrystalline':
+                col_min = 0.01
+                col_max = 0.1
             
             for i, case_i in enumerate(self.cases):
                 ax = axes[i][j]
@@ -575,7 +590,7 @@ class PlottingComparisonAll:
             fig.subplots_adjust(wspace=0.15, hspace=0.02)
             ft_size = 18
             cbar_ft_size = 8
-        
+            
             vmin = 0.8 * np.min(self.Y_ts[i, channel])
             vmax = 1.2 * np.max(self.Y_ts[i, channel])
             

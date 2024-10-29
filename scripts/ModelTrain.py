@@ -183,7 +183,7 @@ class HMCTrainer(BaseTrainer):
         end_iter = self.end_iter    
         print(f"Start iteration: {start_iter}, End iteration: {end_iter}")
         _, train_loader, _, _, _, _, _, _, _, X_tr_tensor, Y_tr_tensor, _, _, _, _ = load_data(self.cfg)
-        return hamiltorch.sample_model(
+        return samplers.sample_model(
             self.net, X_tr_tensor.to(self.device), Y_tr_tensor.to(self.device),
             params_init=params_init, model_loss=metrics.mse_loss, num_samples=self.cfg.num_samples_hmc,
             num_samples_start=start_iter, num_samples_end=end_iter, burn=self.cfg.burn,
